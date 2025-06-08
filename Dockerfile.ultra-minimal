@@ -7,6 +7,7 @@ RUN apk add --no-cache \
     git \
     nasm \
     yasm \
+    zlib-dev \
     zlib-static \
     openssl-libs-static \
     openssl-dev
@@ -36,7 +37,6 @@ RUN git clone --depth 1 --branch n6.1.1 https://github.com/FFmpeg/FFmpeg.git && 
         --disable-pixelutils \
         --disable-error-resilience \
         --disable-iconv \
-        --disable-zlib \
         --enable-small \
         --enable-static \
         --disable-shared \
