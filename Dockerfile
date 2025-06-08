@@ -50,6 +50,7 @@ RUN git clone --depth 1 --branch n6.1.1 https://github.com/FFmpeg/FFmpeg.git && 
         --enable-static \
         --disable-shared \
         --enable-gpl \
+        --enable-version3 \
         --enable-protocol=file \
         --enable-protocol=http \
         --enable-protocol=https \
