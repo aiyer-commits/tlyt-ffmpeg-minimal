@@ -1,0 +1,80 @@
+# Minimal FFmpeg build for frame extraction only
+FROM alpine:3.19 AS builder
+
+# Install build dependencies
+RUN apk add --no-cache \
+    build-base \
+    git \
+    nasm \
+    yasm \
+    zlib-dev \
+    zlib-static \
+    openssl-dev \
+    openssl-libs-static
+
+# Build flags for size optimization
+ENV CFLAGS="-Os -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables" \
+    LDFLAGS="-Wl,--gc-sections -static -s"
+
+WORKDIR /build
+
+# Clone and build FFmpeg
+RUN git clone --depth 1 --branch n6.1.1 https://github.com/FFmpeg/FFmpeg.git && \
+    cd FFmpeg && \
+    ./configure \
+        --prefix=/usr/local \
+        --disable-everything \
+        --disable-ffplay \
+        --disable-ffprobe \
+        --disable-doc \
+        --disable-network \
+        --disable-avdevice \
+        --disable-swresample \
+        --disable-postproc \
+        --disable-avfilter \
+        --disable-pthreads \
+        --disable-w32threads \
+        --disable-os2threads \
+        --disable-debug \
+        --disable-runtime-cpudetect \
+        --enable-small \
+        --enable-static \
+        --disable-shared \
+        --enable-gpl \
+        --enable-version3 \
+        --enable-protocol=file \
+        --enable-protocol=http \
+        --enable-protocol=https \
+        --enable-protocol=tcp \
+        --enable-protocol=tls \
+        --enable-openssl \
+        --enable-decoder=h264 \
+        --enable-decoder=vp9 \
+        --enable-decoder=vp8 \
+        --enable-encoder=mjpeg \
+        --enable-demuxer=mov \
+        --enable-demuxer=mp4 \
+        --enable-demuxer=matroska \
+        --enable-demuxer=webm \
+        --enable-demuxer=flv \
+        --enable-muxer=image2 \
+        --enable-muxer=mjpeg \
+        --enable-filter=scale \
+        --enable-swscale \
+        --enable-zlib \
+        --extra-cflags="$CFLAGS" \
+        --extra-ldflags="$LDFLAGS" && \
+    make -j$(nproc) && \
+    make install
+
+# Strip the binary
+RUN strip -s /usr/local/bin/ffmpeg
+
+# Optional: Compress with UPX (comment out if it causes issues)
+RUN apk add --no-cache upx && \
+    upx --best /usr/local/bin/ffmpeg || true
+
+# Final stage
+FROM scratch
+COPY --from=builder /usr/local/bin/ffmpeg /ffmpeg
+ENTRYPOINT ["/ffmpeg"]

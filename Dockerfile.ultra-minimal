@@ -24,6 +24,8 @@ RUN git clone --depth 1 --branch n6.1.1 https://github.com/FFmpeg/FFmpeg.git && 
     ./configure \
         --prefix=/opt/ffmpeg \
         --disable-everything \
+        --disable-programs \
+        --enable-ffmpeg \
         --disable-ffplay \
         --disable-ffprobe \
         --disable-doc \
@@ -62,14 +64,26 @@ RUN git clone --depth 1 --branch n6.1.1 https://github.com/FFmpeg/FFmpeg.git && 
     make -j$(nproc) && \
     make install
 
+# Check where ffmpeg was installed and strip it
+RUN find /opt/ffmpeg -name ffmpeg -type f || find /usr/local -name ffmpeg -type f || true
+
 # Further strip the binary
-RUN strip --strip-all --remove-section=.comment --remove-section=.note /opt/ffmpeg/bin/ffmpeg
+RUN strip --strip-all --remove-section=.comment --remove-section=.note /opt/ffmpeg/bin/ffmpeg || \
+    strip --strip-all --remove-section=.comment --remove-section=.note /usr/local/bin/ffmpeg || \
+    echo "Failed to strip binary"
 
 # Compress with UPX for even smaller size
 RUN apk add --no-cache upx && \
-    upx --ultra-brute /opt/ffmpeg/bin/ffmpeg || true
+    (upx --ultra-brute /opt/ffmpeg/bin/ffmpeg || upx --ultra-brute /usr/local/bin/ffmpeg || true)
 
-# Final stage
-FROM scratch
+# Final stage - copy from whichever location has the binary
+FROM scratch AS final
 COPY --from=builder /opt/ffmpeg/bin/ffmpeg /ffmpeg
+
+# Alternative if binary is in different location
+FROM scratch AS final-alt
+COPY --from=builder /usr/local/bin/ffmpeg /ffmpeg
+
+# Use the first one that works
+FROM final
 ENTRYPOINT ["/ffmpeg"]

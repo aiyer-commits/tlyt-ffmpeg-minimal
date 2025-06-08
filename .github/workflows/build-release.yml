@@ -18,7 +18,13 @@ jobs:
     
     - name: Build minimal FFmpeg
       run: |
-        docker build -f Dockerfile.ultra-minimal -t ffmpeg-builder .
+        # Try the minimal build first
+        if docker build -f Dockerfile.minimal -t ffmpeg-builder .; then
+          echo "Minimal build succeeded"
+        else
+          echo "Minimal build failed, trying ultra-minimal"
+          docker build -f Dockerfile.ultra-minimal -t ffmpeg-builder .
+        fi
         docker create --name extract ffmpeg-builder
         docker cp extract:/ffmpeg ./ffmpeg-minimal
         docker rm extract
