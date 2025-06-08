@@ -1,0 +1,74 @@
+# Ultra-minimal FFmpeg build for frame extraction
+FROM alpine:3.19 AS builder
+
+# Install minimal build dependencies
+RUN apk add --no-cache \
+    build-base \
+    git \
+    nasm \
+    yasm \
+    zlib-static \
+    openssl-libs-static \
+    openssl-dev
+
+# Aggressive optimization flags
+ENV CFLAGS="-Os -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-math-errno -fmerge-all-constants -fno-ident -Wl,--gc-sections" \
+    LDFLAGS="-Wl,--gc-sections -Wl,-z,norelro -Wl,--hash-style=gnu -Wl,--build-id=none -static -s"
+
+WORKDIR /build
+
+# Build ultra-minimal FFmpeg
+RUN git clone --depth 1 --branch n6.1.1 https://github.com/FFmpeg/FFmpeg.git && \
+    cd FFmpeg && \
+    ./configure \
+        --prefix=/opt/ffmpeg \
+        --disable-everything \
+        --disable-ffplay \
+        --disable-ffprobe \
+        --disable-doc \
+        --disable-avdevice \
+        --disable-swresample \
+        --disable-postproc \
+        --disable-avfilter \
+        --disable-network \
+        --disable-debug \
+        --disable-runtime-cpudetect \
+        --disable-pixelutils \
+        --disable-error-resilience \
+        --disable-iconv \
+        --disable-zlib \
+        --enable-small \
+        --enable-static \
+        --disable-shared \
+        --enable-gpl \
+        --enable-protocol=file \
+        --enable-protocol=http \
+        --enable-protocol=https \
+        --enable-openssl \
+        --enable-decoder=h264 \
+        --enable-decoder=vp9 \
+        --enable-encoder=mjpeg \
+        --enable-demuxer=mov \
+        --enable-demuxer=mp4 \
+        --enable-demuxer=matroska \
+        --enable-demuxer=webm \
+        --enable-muxer=image2 \
+        --enable-filter=scale \
+        --enable-swscale \
+        --enable-zlib \
+        --extra-cflags="$CFLAGS" \
+        --extra-ldflags="$LDFLAGS" && \
+    make -j$(nproc) && \
+    make install
+
+# Further strip the binary
+RUN strip --strip-all --remove-section=.comment --remove-section=.note /opt/ffmpeg/bin/ffmpeg
+
+# Compress with UPX for even smaller size
+RUN apk add --no-cache upx && \
+    upx --ultra-brute /opt/ffmpeg/bin/ffmpeg || true
+
+# Final stage
+FROM scratch
+COPY --from=builder /opt/ffmpeg/bin/ffmpeg /ffmpeg
+ENTRYPOINT ["/ffmpeg"]

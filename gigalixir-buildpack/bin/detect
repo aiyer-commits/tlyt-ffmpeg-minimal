@@ -1,0 +1,4 @@
+#!/bin/bash
+# Buildpack detect script
+echo "FFmpeg Minimal"
+exit 0

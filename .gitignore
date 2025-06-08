@@ -1,0 +1,6 @@
+ffmpeg-minimal
+*.jpg
+*.jpeg
+*.mp4
+*.webm
+.DS_Store

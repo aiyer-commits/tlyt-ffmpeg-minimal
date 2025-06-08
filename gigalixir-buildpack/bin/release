@@ -1,0 +1,7 @@
+#!/bin/bash
+# Buildpack release script
+cat <<EOF
+---
+config_vars:
+  PATH: /app/bin:\$PATH
+EOF

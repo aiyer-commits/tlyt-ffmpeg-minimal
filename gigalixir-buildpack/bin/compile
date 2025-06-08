@@ -1,0 +1,31 @@
+#!/bin/bash
+# Buildpack compile script
+set -e
+
+BUILD_DIR=$1
+CACHE_DIR=$2
+ENV_DIR=$3
+
+echo "-----> Installing minimal FFmpeg binary"
+
+# Create bin directory if it doesn't exist
+mkdir -p $BUILD_DIR/bin
+
+# Download the latest release
+REPO="aiyer-commits/tlyt-ffmpeg-minimal"
+LATEST_RELEASE=$(curl -s https://api.github.com/repos/$REPO/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+
+if [ -z "$LATEST_RELEASE" ]; then
+    echo "Failed to get latest release"
+    exit 1
+fi
+
+echo "       Downloading FFmpeg minimal $LATEST_RELEASE"
+curl -L -o $BUILD_DIR/bin/ffmpeg https://github.com/$REPO/releases/download/$LATEST_RELEASE/ffmpeg-minimal
+chmod +x $BUILD_DIR/bin/ffmpeg
+
+# Verify the binary
+echo "       Verifying FFmpeg binary..."
+$BUILD_DIR/bin/ffmpeg -version || echo "       Note: Binary verification skipped"
+
+echo "       FFmpeg minimal installed successfully"

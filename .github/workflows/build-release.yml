@@ -1,0 +1,37 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build minimal FFmpeg
+      run: |
+        docker build -f Dockerfile.ultra-minimal -t ffmpeg-builder .
+        docker create --name extract ffmpeg-builder
+        docker cp extract:/ffmpeg ./ffmpeg-minimal
+        docker rm extract
+        
+    - name: Check binary size
+      run: |
+        ls -lh ffmpeg-minimal
+        file ffmpeg-minimal
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ffmpeg-minimal
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
